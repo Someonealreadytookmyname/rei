@@ -1,0 +1,10 @@
+# API config file containing secrets
+config.json
+
+# Local databases and uploads
+chroma_db/
+storage/
+
+# Python cache
+__pycache__/
+*.pyc

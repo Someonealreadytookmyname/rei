@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="REI — Chat with your PDFs using local or cloud AI. Upload documents, ask questions, get answers.">
+    <title>rei — pdf chat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=1.0.1">
+</head>
+<body>
+    <div id="app">
+        <!-- ─── HEADER ─────────────────────────────────────────── -->
+        <header id="header">
+            <div class="header-left">
+                <h1 id="app-title">rei</h1>
+                <span class="header-tagline">pdf chat</span>
+            </div>
+            <div class="header-right">
+                <span id="status-indicator" class="status-dot status-local" title="Local mode"></span>
+                <span id="status-label" class="status-text">local</span>
+                <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Open settings">⚙</button>
+            </div>
+        </header>
+
+        <!-- ─── MAIN LAYOUT ────────────────────────────────────── -->
+        <main id="main">
+            <!-- ─── SIDEBAR ────────────────────────────────────── -->
+            <aside id="sidebar">
+                <div class="sidebar-section">
+                    <div class="section-label">documents</div>
+                    <div id="pdf-list" class="pdf-list">
+                        <!-- PDF items rendered by JS -->
+                        <div id="empty-state" class="empty-state">
+                            no documents yet.<br>upload a pdf to begin.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div id="upload-zone" class="upload-zone" tabindex="0" role="button" aria-label="Upload PDF">
+                        <input type="file" id="file-input" accept=".pdf" hidden>
+                        <span class="upload-icon">+</span>
+                        <span class="upload-text">upload pdf</span>
+                        <span class="upload-hint">drop file or click</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section sidebar-footer">
+                    <div class="scope-toggle">
+                        <span class="section-label">scope</span>
+                        <div class="toggle-group">
+                            <button id="scope-single" class="toggle-btn active" data-scope="single">this doc</button>
+                            <button id="scope-all" class="toggle-btn" data-scope="all">all docs</button>
+                        </div>
+                    </div>
+                    <div id="sidebar-info" class="sidebar-info">
+                        <!-- mode / model info rendered by JS -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ─── CHAT PANEL ─────────────────────────────────── -->
+            <section id="chat-panel">
+                <div id="chat-messages" class="chat-messages">
+                    <div id="chat-welcome" class="chat-welcome">
+                        <div class="welcome-logo">rei</div>
+                        <div class="welcome-sub">select a document and ask a question.</div>
+                        <div class="welcome-hint">
+                            <span>upload a pdf</span>
+                            <span>→</span>
+                            <span>select it</span>
+                            <span>→</span>
+                            <span>start chatting</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chat-input-area" class="chat-input-area">
+                    <div class="input-wrapper">
+                        <span class="input-prompt">→</span>
+                        <textarea
+                            id="chat-input"
+                            class="chat-input"
+                            placeholder="ask something..."
+                            rows="1"
+                            aria-label="Chat input"
+                        ></textarea>
+                        <button id="send-btn" class="send-btn" title="Send" aria-label="Send message" disabled>
+                            ↵
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ─── SETTINGS PANEL (OVERLAY) ───────────────────────── -->
+        <div id="settings-overlay" class="settings-overlay hidden">
+            <div id="settings-panel" class="settings-panel">
+                <div class="settings-header">
+                    <span class="section-label">settings</span>
+                    <button id="settings-close" class="icon-btn" aria-label="Close settings">✕</button>
+                </div>
+
+                <div class="settings-body">
+                    <!-- LLM Mode -->
+                    <div class="settings-group">
+                        <label class="settings-label">llm mode</label>
+                        <div class="toggle-group">
+                            <button class="toggle-btn llm-mode-btn active" data-mode="local">local</button>
+                            <button class="toggle-btn llm-mode-btn" data-mode="api">api</button>
+                        </div>
+                    </div>
+
+                    <!-- Ollama Model (local) -->
+                    <div id="local-settings" class="settings-subgroup">
+                        <label class="settings-label" for="ollama-model">ollama model</label>
+                        <input type="text" id="ollama-model" class="settings-input" value="qwen3:4b" placeholder="e.g. qwen3:4b, llama3, mistral">
+                    </div>
+
+                    <!-- API Provider (api mode) -->
+                    <div id="api-settings" class="settings-subgroup hidden">
+                        <label class="settings-label">provider</label>
+                        <div class="toggle-group provider-group">
+                            <button class="toggle-btn provider-btn active" data-provider="openai">openai</button>
+                            <button class="toggle-btn provider-btn" data-provider="gemini">gemini</button>
+                            <button class="toggle-btn provider-btn" data-provider="anthropic">claude</button>
+                            <button class="toggle-btn provider-btn" data-provider="huggingface">huggingface</button>
+                        </div>
+
+                        <!-- OpenAI -->
+                        <div id="openai-config" class="provider-config">
+                            <label class="settings-label" for="openai-key">api key</label>
+                            <input type="password" id="openai-key" class="settings-input" placeholder="sk-...">
+                            <label class="settings-label" for="openai-model">model</label>
+                            <input type="text" id="openai-model" class="settings-input" value="gpt-4o-mini" placeholder="e.g. gpt-4o-mini, gpt-4o">
+                        </div>
+
+                        <!-- Gemini -->
+                        <div id="gemini-config" class="provider-config hidden">
+                            <label class="settings-label" for="gemini-key">api key</label>
+                            <input type="password" id="gemini-key" class="settings-input" placeholder="AIza...">
+                            <label class="settings-label" for="gemini-model">model</label>
+                            <input type="text" id="gemini-model" class="settings-input" value="gemini-2.0-flash" placeholder="e.g. gemini-2.0-flash">
+                        </div>
+
+                        <!-- Anthropic -->
+                        <div id="anthropic-config" class="provider-config hidden">
+                            <label class="settings-label" for="anthropic-key">api key</label>
+                            <input type="password" id="anthropic-key" class="settings-input" placeholder="sk-ant-...">
+                            <label class="settings-label" for="anthropic-model">model</label>
+                            <input type="text" id="anthropic-model" class="settings-input" value="claude-sonnet-4-20250514" placeholder="e.g. claude-sonnet-4-20250514">
+                        </div>
+
+                        <!-- Hugging Face -->
+                        <div id="huggingface-config" class="provider-config hidden">
+                            <label class="settings-label" for="huggingface-key">api key</label>
+                            <input type="password" id="huggingface-key" class="settings-input" placeholder="hf_...">
+                            <label class="settings-label" for="huggingface-model">model id</label>
+                            <input type="text" id="huggingface-model" class="settings-input" value="meta-llama/Meta-Llama-3-8B-Instruct" placeholder="e.g. meta-llama/Meta-Llama-3-8B-Instruct">
+                        </div>
+                    </div>
+
+                    <!-- Embedding Mode -->
+                    <div class="settings-group">
+                        <label class="settings-label">embedding</label>
+                        <div class="toggle-group">
+                            <button class="toggle-btn embed-mode-btn active" data-mode="local">local</button>
+                            <button class="toggle-btn embed-mode-btn" data-mode="api">openai api</button>
+                        </div>
+                        <span class="settings-hint">changing embeddings won't affect already-uploaded pdfs</span>
+                    </div>
+
+                    <!-- Save -->
+                    <div class="settings-actions">
+                        <button id="settings-save" class="action-btn">save settings</button>
+                        <span id="settings-status" class="settings-status"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── UPLOAD PROGRESS OVERLAY ────────────────────────── -->
+        <div id="upload-overlay" class="upload-overlay hidden">
+            <div class="upload-progress">
+                <div class="upload-progress-text">
+                    <span id="upload-step">processing pdf...</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=1.0.1"></script>
+</body>
+</html>
