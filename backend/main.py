@@ -1,7 +1,7 @@
 import json
 import traceback
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException, Body
+from fastapi import FastAPI, UploadFile, File, HTTPException, Body, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, FileResponse
@@ -24,6 +24,24 @@ app.add_middleware(
 
 # Serve frontend static files
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+
+
+# Helper to retrieve config overridden by client-specific headers (X-Client-Config)
+def get_config(x_client_config: str | None = Header(None, alias="X-Client-Config")) -> dict:
+    config = config_service.load_config()
+    if x_client_config:
+        try:
+            client_config = json.loads(x_client_config)
+            # Only update configuration with valid keys and ignore masked passwords/keys
+            for k, v in client_config.items():
+                if k in config_service.DEFAULT_CONFIG:
+                    if isinstance(v, str) and "•" in v:
+                        continue  # Skip masked values
+                    config[k] = v
+        except Exception:
+            pass
+    return config
+
 
 # In-memory PDF metadata registry (loaded from storage on startup)
 pdf_registry: dict[str, dict] = {}
@@ -54,14 +72,13 @@ def _save_registry():
 # ─── ROUTES: PDF MANAGEMENT ──────────────────────────────────────────
 
 @app.post("/api/upload", response_model=UploadResponse)
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(file: UploadFile = File(...), config: dict = Depends(get_config)):
     """Upload a PDF: extract text, chunk, embed, store in ChromaDB."""
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
 
     try:
         file_bytes = await file.read()
-        config = config_service.load_config()
 
         # Step 1 & 2: Extract text and chunk
         result = pdf_service.process_pdf(file_bytes, file.filename)
@@ -135,7 +152,7 @@ async def delete_pdf(pdf_id: str):
 # ─── ROUTES: CHAT ────────────────────────────────────────────────────
 
 @app.post("/api/chat")
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, config: dict = Depends(get_config)):
     """
     Chat with PDF(s) using RAG.
     Streams the response as Server-Sent Events (SSE).
@@ -145,7 +162,6 @@ async def chat(request: ChatRequest):
     - ["id1"] → search single document
     - ["id1", "id2", ...] → search specific documents
     """
-    config = config_service.load_config()
 
     try:
         # Step 1: Embed the question

@@ -1,8 +1,9 @@
 import chromadb
+import os
 from pathlib import Path
 
 # ChromaDB persistent directory (same location as existing)
-CHROMA_DIR = str(Path(__file__).parent.parent.parent / "chroma_db")
+CHROMA_DIR = str(os.environ.get("CHROMA_DIR", Path(__file__).parent.parent.parent / "chroma_db"))
 
 # Lazy singleton
 _client = None

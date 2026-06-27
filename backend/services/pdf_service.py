@@ -1,4 +1,5 @@
 import hashlib
+import os
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -6,7 +7,7 @@ from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Storage directory for uploaded PDFs
-STORAGE_DIR = Path(__file__).parent.parent.parent / "storage"
+STORAGE_DIR = Path(os.environ.get("STORAGE_DIR", Path(__file__).parent.parent.parent / "storage"))
 STORAGE_DIR.mkdir(exist_ok=True)
 
 # Metadata file tracking all PDFs

@@ -58,29 +58,45 @@
     // ─── API HELPERS ────────────────────────────────────────────────
 
     const API = {
+        _getHeaders(extraHeaders = {}) {
+            const headers = { ...extraHeaders };
+            if (state.settings) {
+                headers['X-Client-Config'] = JSON.stringify(state.settings);
+            }
+            return headers;
+        },
         async get(path) {
-            const res = await fetch(`/api${path}`);
+            const res = await fetch(`/api${path}`, {
+                headers: this._getHeaders()
+            });
             if (!res.ok) throw new Error(await res.text());
             return res.json();
         },
         async post(path, body) {
             const res = await fetch(`/api${path}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this._getHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error(await res.text());
             return res.json();
         },
         async del(path) {
-            const res = await fetch(`/api${path}`, { method: 'DELETE' });
+            const res = await fetch(`/api${path}`, {
+                method: 'DELETE',
+                headers: this._getHeaders()
+            });
             if (!res.ok) throw new Error(await res.text());
             return res.json();
         },
         async upload(file) {
             const form = new FormData();
             form.append('file', file);
-            const res = await fetch('/api/upload', { method: 'POST', body: form });
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                headers: this._getHeaders(),
+                body: form
+            });
             if (!res.ok) throw new Error(await res.text());
             return res.json();
         },
@@ -90,7 +106,12 @@
 
     async function loadSettings() {
         try {
-            state.settings = await API.get('/settings');
+            const saved = localStorage.getItem('rei_settings');
+            if (saved) {
+                state.settings = JSON.parse(saved);
+            } else {
+                state.settings = await API.get('/settings');
+            }
         } catch (e) {
             console.error('Failed to load settings:', e);
             state.settings = {};
@@ -388,10 +409,15 @@
         const typing = addTypingIndicator();
 
         try {
-            // SSE streaming request
+            // SSE streaming request with custom configuration header
+            const headers = { 'Content-Type': 'application/json' };
+            if (state.settings) {
+                headers['X-Client-Config'] = JSON.stringify(state.settings);
+            }
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({
                     question: text,
                     pdf_ids: pdfIds,
@@ -526,9 +552,8 @@
         };
 
         try {
-            await API.post('/settings', settings);
-            // Re-load settings from server to get properly saved state
-            await loadSettings();
+            localStorage.setItem('rei_settings', JSON.stringify(settings));
+            state.settings = settings;
             els.settingsStatus.textContent = 'saved ✓';
             els.settingsStatus.style.color = 'var(--accent)';
             setTimeout(() => { els.settingsStatus.textContent = ''; }, 2000);

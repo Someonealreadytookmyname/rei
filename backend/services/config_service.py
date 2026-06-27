@@ -2,8 +2,8 @@ import json
 import os
 from pathlib import Path
 
-# Config file lives at project root
-CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
+# Config file lives at project root or overridden via env var
+CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", Path(__file__).parent.parent.parent / "config.json"))
 
 DEFAULT_CONFIG = {
     "llm_mode": "local",         # "local" or "api"
@@ -23,17 +23,24 @@ DEFAULT_CONFIG = {
 
 
 def load_config() -> dict:
-    """Load config from disk, creating defaults if missing."""
+    """Load config from disk, creating defaults if missing. Supports environment variable overrides."""
+    config = dict(DEFAULT_CONFIG)
     if CONFIG_PATH.exists():
         try:
             with open(CONFIG_PATH, "r") as f:
                 saved = json.load(f)
             # Merge with defaults so new keys are always present
-            merged = {**DEFAULT_CONFIG, **saved}
-            return merged
+            config.update(saved)
         except (json.JSONDecodeError, IOError):
             pass
-    return dict(DEFAULT_CONFIG)
+
+    # Allow environment variables to override/initialize configuration
+    for key in DEFAULT_CONFIG:
+        env_val = os.environ.get(key.upper())
+        if env_val:
+            config[key] = env_val
+
+    return config
 
 
 def save_config(config: dict) -> None:
