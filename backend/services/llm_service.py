@@ -262,7 +262,7 @@ async def stream_huggingface(
     import httpx
 
     messages = _build_messages(question, context, history)
-    url = f"https://api-inference.huggingface.co/models/{model}/v1/chat/completions"
+    url = "https://router.huggingface.co/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -281,7 +281,7 @@ async def stream_huggingface(
                     yield f"Error: Hugging Face API returned status {response.status_code} - {err_text.decode(errors='ignore')}"
                     return
 
-                async for line in response.iter_lines():
+                async for line in response.aiter_lines():
                     if not line:
                         continue
                     if line.startswith("data: "):
