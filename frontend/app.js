@@ -690,12 +690,28 @@
     }
 
     function extractError(e) {
+        if (!e) return 'unknown error';
+        if (typeof e === 'string') return e;
+
+        const message = e.message || e.toString() || '';
         try {
-            const parsed = JSON.parse(e.message);
-            return parsed.detail || e.message;
+            const parsed = JSON.parse(message);
+            if (parsed && typeof parsed === 'object') {
+                if (parsed.detail) {
+                    if (Array.isArray(parsed.detail)) {
+                        return parsed.detail.map(err => {
+                            const loc = err.loc ? err.loc.join('.') : '';
+                            return loc ? `${loc}: ${err.msg}` : err.msg;
+                        }).join(', ');
+                    }
+                    return parsed.detail;
+                }
+                return JSON.stringify(parsed);
+            }
         } catch {
-            return e.message || 'unknown error';
+            // Not JSON (e.g. HTML 502/504 errors)
         }
+        return message || 'unknown error';
     }
 
     function showUploadProgress(text) {

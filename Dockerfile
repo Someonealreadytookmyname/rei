@@ -31,4 +31,4 @@ RUN mkdir -p /app/storage /app/chroma_db
 EXPOSE 8000
 
 # Command to run the application using the PORT env variable provided by Render/Railway
-CMD uvicorn backend.main:app --host 0.0.0.0 --port ${PORT}
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT} 2>&1 | tee /app/app.log"]

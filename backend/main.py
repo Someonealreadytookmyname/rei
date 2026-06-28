@@ -257,6 +257,23 @@ async def update_settings(settings: dict[str, Any] = Body(...)):
     return {"success": True, "message": "Settings updated."}
 
 
+@app.get("/api/logs")
+async def get_logs(lines: int = 150):
+    """Retrieve the last N lines of the application logs."""
+    log_path = Path("/app/app.log")
+    if not log_path.exists():
+        # Fallback to checking local path
+        log_path = Path(__file__).parent.parent / "app.log"
+        if not log_path.exists():
+            return {"message": "Log file not found."}
+    try:
+        with open(log_path, "r", errors="ignore") as f:
+            all_lines = f.readlines()
+        return {"logs": "".join(all_lines[-lines:])}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # ─── SERVE FRONTEND ──────────────────────────────────────────────────
 
 @app.get("/")
