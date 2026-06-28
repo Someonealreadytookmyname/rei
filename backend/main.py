@@ -88,6 +88,7 @@ async def upload_pdf(file: UploadFile = File(...), config: dict = Depends(get_co
             result["chunks"],
             mode=config.get("embedding_mode", "local"),
             api_key=config.get("embedding_api_key", "") or config.get("openai_api_key", ""),
+            config=config,
         )
 
         # Step 4: Store in ChromaDB
@@ -169,6 +170,7 @@ async def chat(request: ChatRequest, config: dict = Depends(get_config)):
             request.question,
             mode=config.get("embedding_mode", "local"),
             api_key=config.get("embedding_api_key", "") or config.get("openai_api_key", ""),
+            config=config,
         )
 
         # Step 2: Retrieve relevant chunks based on scope
